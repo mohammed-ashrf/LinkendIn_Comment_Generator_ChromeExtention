@@ -26,5 +26,12 @@ export default defineManifest({
 
     side_panel: {
         default_path: "index.html"
-    }
+    },
+
+    content_scripts: [
+        {
+            matches: ["https://www.linkedin.com/*"],
+            js: ["src/content/content.ts"]
+        }
+    ]
 });
