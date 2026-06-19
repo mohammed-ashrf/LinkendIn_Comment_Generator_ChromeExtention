@@ -1,4 +1,4 @@
-console.log("Content script initialized");
+const commentBoxes = new Map<string, HTMLElement>();
 
 function findPostContainer(commentElement: HTMLElement): HTMLElement | null {
     return commentElement.closest('[role="listitem"]');
@@ -23,9 +23,24 @@ function extractAuthor(postContainer: HTMLElement): string | null {
     return aria?.split(" Profile ")[0].replace(/ (Verified|Premium)$/, "") ?? null;
 }
 
+function generateUniqueId(): string {
+    return crypto.randomUUID();
+}
+
+function insertComment(commentBoxId: string, comment: string) {
+    const input = commentBoxes.get(commentBoxId);
+    if (!input) {
+        console.warn(`No comment box found for ID: ${commentBoxId}`);
+        return;
+    }
+
+    input.focus();
+    input.textContent = "";
+    document.execCommand("insertText", false, comment);
+}
+
 if (window.location.hostname.includes("linkedin.com")) {
     console.log("LinkedIn detected");
-    let activeInputElement: HTMLElement | null = null;
 
     document.addEventListener("focusin", (event) => {
         const target = event.target as HTMLElement;
@@ -38,22 +53,45 @@ if (window.location.hostname.includes("linkedin.com")) {
             return;
         }
 
-        activeInputElement = target;
+        let commentBoxId = target.dataset.commentBoxId;
 
-        const postContainer = findPostContainer(activeInputElement);
+        if (!commentBoxId) {
+            commentBoxId = generateUniqueId();
+            target.dataset.commentBoxId = commentBoxId;
+            commentBoxes.set(commentBoxId, target);
+        }
+        
+        const postContainer = findPostContainer(target);
 
         if (postContainer) {
             console.log("Post container found:", postContainer);
             const postText = extractPostText(postContainer);
             const authorName = extractAuthor(postContainer);
-            if (postText) {
-                console.log("Extracted post text:", postText);
-            }
-            if (authorName) {
-                console.log("Extracted author name:", authorName);
+
+            const postData = {
+                commentBoxId,
+                authorName,
+                postText
+            };
+
+            try {
+                chrome.runtime.sendMessage({
+                    type: "POST_SELECTED",
+                    payload: postData
+                });
+            } catch {
+                console.error("Failed to send POST_SELECTED message");
             }
         } else {
             console.log("No post container found for the active input element.");
+        }
+    });
+
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+        if (message.type === "INSERT_COMMENT") {
+            insertComment(message.commentBoxId, message.comment);
+            sendResponse({ success: true });
+            return true;
         }
     });
 }

@@ -8,7 +8,8 @@ export default defineManifest({
     permissions: [
         "sidePanel",
         "activeTab",
-        "storage"
+        "storage",
+        "tabs"
     ],
 
     host_permissions: [
