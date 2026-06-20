@@ -59,19 +59,26 @@ export function SidePanel() {
     }
 
     return (
-        <div style={{padding: "16px", fontFamily: "Arial, sans-serif"}}>
-            <h1 style={{fontSize: "24px", marginBottom: "16px"}}>LinkedIn AI Assistant</h1>
+        <div className="sidepanel">
+            <div className="sidepanel-header">
+                <div className="brand-dot" />
+                <h1>evyAI Assistant</h1>
+            </div>
             {selectedPost ? (
                 <>
-                    <p style={{fontSize: "14px", marginBottom: "4px"}}><strong>Post by:</strong> {selectedPost.authorName ?? "Unknown"}</p>
-                    <p style={{fontSize: "14px", marginBottom: "16px", color: "#555"}}>{selectedPost.postText?.slice(0, 200)}</p>
+                    <div className="post-card">
+                        <div className="post-author">Post by: {selectedPost.authorName ?? "Unknown"}</div>
+                        <div className="post-text">{selectedPost.postText?.slice(0, 200)}</div>
+                    </div>
                     <ToneSelector value={tone} onChange={setTone} />
-                    <p style={{fontSize: "12px", marginBottom: "12px", color: "#777"}}>Selected tone: <strong>{tone}</strong></p>
                     <GenerateButton loading={loading} onClick={handleGenerate} />
                     {comment && <GeneratedComment comment={comment} onInsert={handleInsert} />}
                 </>
             ) : (
-                <p style={{fontSize: "16px", marginBottom: "8px"}}>Click on a LinkedIn comment box to get started.</p>
+                <div className="empty-state">
+                    <div className="empty-icon">💬</div>
+                    Click on a LinkedIn comment box to get started.
+                </div>
             )}
         </div>
     )
