@@ -5,24 +5,25 @@ const OPENROUTER_MODEL = import.meta.env.VITE_OPENROUTER_MODEL;
 
 export async function generateComment(post: LinkedInPost, tone: Tone): Promise<string> {
     const prompt = `
-Post Author:
-${post.author}
+      Post Author:
+      ${post.author}
 
-Post Content:
-${post.content}
+      Post Content:
+      ${post.content}
 
-Desired Tone:
-${tone}
+      Desired Tone:
+      ${tone}
 
-Instructions:
+      Instructions:
 
-* Write a LinkedIn comment in the requested tone.
-* Keep it concise (under 80 words).
-* Add value to the discussion.
-* Avoid generic praise.
-* Avoid emojis.
-* Sound natural and human.
-* Return only the comment text.
+      * Write a LinkedIn comment in the requested tone.
+      * Match the language of the post content — if the post is in Spanish, reply in Spanish, etc.
+      * Keep it concise (under 80 words).
+      * Add value to the discussion.
+      * Avoid generic praise.
+      * Avoid emojis.
+      * Sound natural and human.
+      * Return only the comment text.
     `;
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {

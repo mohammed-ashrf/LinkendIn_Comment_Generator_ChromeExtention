@@ -3,4 +3,4 @@ export interface LinkedInPost {
     content: string;
 }
 
-export type Tone = "professional" | "friendly" | "insightful" | "question" |  "challenge" | "humorous" | "agree";
+export type Tone = "professional" | "friendly" | "insightful" | "question" | "challenge" | "humorous" | "agree";
