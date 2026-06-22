@@ -19,18 +19,39 @@ export function SidePanel() {
 
   useEffect(() => {
     bridge.init();
-    return bridge.on("ELEMENT_FOCUSED", (data) => {
-      const id = data.elementId as string;
-      if (id !== currId.current) {
-        setGenerated("");
-      }
-      currId.current = id;
-      const parsed = parseContext(data as Record<string, unknown>);
-      if (parsed || ctxRef.current === null) {
-        setCtx(parsed);
-      }
+    const unsub = bridge.on("ELEMENT_FOCUSED", handleFocuseData);
+    let cancelled = false;
+    bridge.send("GET_INITIAL_CONTEXT").then((data) => {
+      if (!cancelled && data) handleFocuseData(data);
     });
+    function clearState() {
+      setCtx(null);
+      setGenerated("");
+      currId.current = null;
+    }
+    const unsubFocusOut = bridge.on("FOCUS_OUT", clearState);
+    const unsubClear = bridge.on("CLEAR_CONTEXT", clearState);
+    return () => {
+      cancelled = true;
+      unsub();
+      unsubFocusOut();
+      unsubClear();
+    };
   }, []);
+
+  function handleFocuseData(data: any) {
+    if (data._focused === false) {
+      setCtx(null);
+      setGenerated("");
+      currId.current = null;
+      return;
+    }
+    const id = data.elementId as string;
+    if (id !== currId.current) setGenerated("");
+    currId.current = id;
+    const parsed = parseContext(data as Record<string, unknown>);
+    if (parsed || ctxRef.current === null) setCtx(parsed);
+  }
 
   const handleGenerate = useCallback(async () => {
     if (!ctx) return;

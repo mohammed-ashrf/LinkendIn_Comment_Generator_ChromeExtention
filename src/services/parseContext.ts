@@ -17,7 +17,7 @@ export function parseContext(data: Record<string, unknown>): { author: string; c
   for (const attr of allLabels) {
     const val = attr.replace(/^aria-label\s*=\s*"/i, "").replace(/"\s*$/i, "");
     if (/\s+Profile\s+/i.test(val)) {
-      author = val.split(/\s+Profile\s+/i)[0].replace(/ (Verified|Premium)$/, "").trim();
+      author = val.replace(/ , Open to work/, "").split(/\s+Profile\s+/i)[0].replace(/ (Verified|Premium)$/, "").trim();
       break;
     }
   }
