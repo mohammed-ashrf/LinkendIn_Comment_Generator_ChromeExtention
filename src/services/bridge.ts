@@ -34,7 +34,7 @@ export const bridge = {
       if (e.data.source !== "extension") return;
       const { id, type, ...rest } = e.data;
       if (id && pending.has(id)) {
-        const resolve = pending.get(id)!;
+        const resolve = pending.get(id);
         if (resolve) resolve(rest);
         pending.delete(id);
       } else if (type && listeners.has(type)) {

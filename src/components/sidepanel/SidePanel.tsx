@@ -13,6 +13,9 @@ export function SidePanel() {
   const [loading, setLoading] = useState(false);
   const [tone, setTone] = useState<Tone>("professional");
   const currId = useRef<string | null>(null);
+  const elementAtGenerate = useRef<string | null>(null);
+  const ctxRef = useRef(ctx);
+  ctxRef.current = ctx;
 
   useEffect(() => {
     bridge.init();
@@ -23,7 +26,9 @@ export function SidePanel() {
       }
       currId.current = id;
       const parsed = parseContext(data as Record<string, unknown>);
-      setCtx(parsed);
+      if (parsed || ctxRef.current === null) {
+        setCtx(parsed);
+      }
     });
   }, []);
 
@@ -31,18 +36,21 @@ export function SidePanel() {
     if (!ctx) return;
     setLoading(true);
     setGenerated("");
+    elementAtGenerate.current = currId.current;
     const result = await generateComment(
       { author: ctx.author, content: ctx.content },
       tone,
     );
+    if (currId.current !== elementAtGenerate.current) return;
     setGenerated(result);
     setLoading(false);
   }, [ctx, tone]);
 
   const handleInsert = useCallback(() => {
     if (!currId.current || !generated) return;
+    const targetId = currId.current;
     bridge.send("INSERT_TEXT", {
-      elementId: currId.current,
+      elementId: targetId,
       text: generated,
     });
   }, [generated]);
