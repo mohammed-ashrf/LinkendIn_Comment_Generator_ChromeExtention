@@ -4,6 +4,7 @@ type EventHandler = (data: any) => void;
 const pending = new Map<string, ResponseHandler>();
 const listeners = new Map<string, Set<EventHandler>>();
 let counter = 0;
+let initialized = false;
 
 export const bridge = {
   send(type: string, data: Record<string, unknown> = {}): Promise<any> {
@@ -27,11 +28,14 @@ export const bridge = {
   },
 
   init() {
+    if (initialized) return;
+    initialized = true;
     window.addEventListener("message", (e) => {
       if (e.data.source !== "extension") return;
       const { id, type, ...rest } = e.data;
       if (id && pending.has(id)) {
-        pending.get(id)!(rest);
+        const resolve = pending.get(id)!;
+        if (resolve) resolve(rest);
         pending.delete(id);
       } else if (type && listeners.has(type)) {
         listeners.get(type)!.forEach((fn) => fn(rest));
