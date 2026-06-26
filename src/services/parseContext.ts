@@ -1,4 +1,4 @@
-import type { ReplyTo } from "../types";
+import type { DMContext, ReplyTo } from "../types";
 
 function extractAuthor(html: string): string | null {
   const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -106,5 +106,53 @@ export function parseContext(data: Record<string, unknown>): { author: string; c
     author: author ?? "Unknown",
     content: content ?? "Could not detect post content",
     replyTo
+  };
+}
+
+
+function extractRecipient(html: string): string | null {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('script, style, svg, button').forEach(el => el.remove());
+  const titleEl = doc.querySelector('.msg-entity-lockup__entity-title');
+  if (!titleEl) return null;
+  return titleEl.textContent?.trim().replace(/\s+Premium$/i, '').trim() ?? null;
+}
+
+function extractDmMessages(msgHtml: string): Array<{ sender: string; text: string }> {
+  const doc = new DOMParser().parseFromString(msgHtml, 'text/html');
+  doc.querySelectorAll('script, style, svg, button').forEach(el => el.remove());
+  const messages: Array<{ sender: string; text: string }> = [];
+  let currentSender = '';
+  for (const item of doc.querySelectorAll('.msg-s-event-listitem')) {
+    const nameEl = item.querySelector('.msg-s-message-group__name');
+    if (nameEl) currentSender = nameEl.textContent?.trim() || '';
+    if (!currentSender) continue;
+    for (const bodyEl of item.querySelectorAll('.msg-s-event-listitem__body')) {
+      const text = bodyEl.textContent?.trim() || '';
+      if (text && text.length > 2) messages.push({ sender: currentSender, text });
+    }
+  }
+  return messages;
+}
+
+export function parseDMContext(data: Record<string, unknown>): DMContext | null {
+  const url = (data.pageUrl as string) ?? '';
+  if (!url.includes('/messaging/thread/')) return null;
+
+  const html = (data.dmHtml as string) ?? '';
+  if (!html) return null;
+
+  const recipient = extractRecipient(html);
+  if (!recipient) return null;
+
+  const msgHtml = (data.dmMessagesHtml as string) ?? '';
+  if (!msgHtml) return null;
+
+  const messages = extractDmMessages(msgHtml);
+  if (messages.length === 0) return null;
+
+  return {
+    recipient,
+    conversation: messages.slice(-10),
   };
 }
