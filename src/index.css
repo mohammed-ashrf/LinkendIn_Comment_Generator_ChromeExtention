@@ -299,3 +299,77 @@ body {
     color: #374151;
     line-height: 1.4;
 }
+
+
+/* DM Header */
+.dm-header {
+    margin-bottom: 16px;
+}
+
+.dm-header-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 2px;
+}
+
+.dm-recipient {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-h);
+}
+
+/* DM Conversation */
+.dm-conversation {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+}
+
+/* DM Bubbles */
+.dm-bubble {
+    padding: 8px 12px;
+    border-radius: 12px;
+    max-width: 85%;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.dm-bubble-sent {
+    background: var(--accent-bg);
+    border: 1px solid var(--accent-border);
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+
+.dm-bubble-received {
+    background: var(--social-bg);
+    border: 1px solid var(--border);
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+
+.dm-bubble-sender {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-h);
+    margin-bottom: 2px;
+}
+
+.dm-bubble-text {
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 12px;
+    line-height: 1.4;
+}

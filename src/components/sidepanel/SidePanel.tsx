@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { generateComment } from "../../services/openrouter";
+import { generateComment, generateMessage } from "../../services/openrouter";
 import { bridge } from "../../services/bridge";
-import { parseContext } from "../../services/parseContext";
-import type { ReplyTo, Tone } from "../../types";
+import { parseContext, parseDMContext } from "../../services/parseContext";
+import type { ReplyTo, Tone, DMContext } from "../../types";
 import { ToneSelector } from "./ToneSelector";
 import { GenerateButton } from "./GenerateButton";
 import { GeneratedComment } from "./GeneratedComment";
+import { DMHeader } from "./DMHeader";
+import { DMConversation } from "./DMConversation";
 
 export function SidePanel() {
   const [ctx, setCtx] = useState<{ author: string; content: string; replyTo: ReplyTo | null } | null>(null);
+  const [dmCtx, setDmCtx] = useState<DMContext | null>(null);
   const [generated, setGenerated] = useState("");
   const [loading, setLoading] = useState(false);
   const [tone, setTone] = useState<Tone>("professional");
@@ -18,6 +21,7 @@ export function SidePanel() {
   const generatedMap = useRef<Map<string, string>>(new Map());
   const ctxRef = useRef(ctx);
   ctxRef.current = ctx;
+  const lastUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     bridge.init();
@@ -28,17 +32,25 @@ export function SidePanel() {
     });
     function clearState() {
       if (loadingRef.current) return;
+      console.log("[SidePanel] clearState");
       setCtx(null);
+      setDmCtx(null);
       setGenerated("");
       currId.current = null;
     }
     const unsubFocusOut = bridge.on("FOCUS_OUT", clearState);
     const unsubClear = bridge.on("CLEAR_CONTEXT", clearState);
+    const unsubUrlChange = bridge.on("URL_CHANGED", (data) => {
+      console.log("[SidePanel] URL_CHANGED ->", data.pageUrl);
+      lastUrlRef.current = data.pageUrl as string;
+      clearState();
+    });
     return () => {
       cancelled = true;
       unsub();
       unsubFocusOut();
       unsubClear();
+      unsubUrlChange();
     };
   }, []);
 
@@ -46,18 +58,29 @@ export function SidePanel() {
     if (data._focused === false) {
       if (loadingRef.current) return;
       setCtx(null);
+      setDmCtx(null);
       setGenerated("");
       currId.current = null;
       return;
     }
+    const eventUrl = data.pageUrl as string | undefined;
+    if (lastUrlRef.current && eventUrl && eventUrl !== lastUrlRef.current) return;
+    console.log("[handleFocuseData] has dmHtml:", !!data.dmHtml, "dmHtml len:", data.dmHtml?.length);
     const id = data.elementId as string;
     const saved = generatedMap.current.get(id);
     if (id !== currId.current && !saved) setGenerated("");
     currId.current = id;
     if (saved) setGenerated(saved);
-    const parsed = parseContext(data as Record<string, unknown>);
-    console.log("Parsed context:", parsed);
-    if (parsed || ctxRef.current === null) setCtx(parsed);
+    const dmParsed = parseDMContext(data as Record<string, unknown>);
+    if (dmParsed) {
+        setDmCtx(dmParsed);
+        setCtx(null);
+    } else if (data.pageUrl) {
+        const parsed = parseContext(data as Record<string, unknown>);
+        if (parsed || ctxRef.current === null) setCtx(parsed);
+        if (parsed) setDmCtx(null);
+    }
+    console.log("[handleFocuseData] pageUrl:", data.pageUrl, "isDM:", !!dmParsed);
   }
 
   const handleGenerate = useCallback(async () => {
@@ -86,6 +109,29 @@ export function SidePanel() {
     }
   }, [ctx, tone]);
 
+  const handleGenerateDM = useCallback(async () => {
+    if (!dmCtx) return;
+    loadingRef.current = true;
+    setLoading(true);
+    setGenerated("");
+    elementAtGenerate.current = currId.current;
+    try {
+      const result = await generateMessage(dmCtx, tone);
+      if (currId.current !== elementAtGenerate.current) return;
+      setGenerated(result);
+      if (currId.current) {
+        generatedMap.current.set(currId.current, result);
+        if (generatedMap.current.size > 20) {
+          const key = generatedMap.current.keys().next().value;
+          if (key) generatedMap.current.delete(key);
+        }
+      }
+    } finally {
+      setLoading(false);
+      loadingRef.current = false;
+    }
+  }, [dmCtx, tone]);
+
   const handleInsert = useCallback(() => {
     if (!currId.current || !generated) return;
     const targetId = currId.current;
@@ -100,12 +146,15 @@ export function SidePanel() {
       <div className="sidepanel-header">
         <div className="brand-dot" />
         <h1>evyAI Assistant</h1>
+        {(ctx || dmCtx) && (
+          <span className="surface-badge">{ctx ? 'Comment' : dmCtx ? 'Direct Message' : ''}</span>
+        )}
       </div>
 
-      {!ctx && (
+      {!ctx && !dmCtx && (
         <div className="empty-state">
           <div className="empty-icon">💬</div>
-          Click on a LinkedIn comment box to get started.
+          Click on a LinkedIn comment or DM box to get started.
         </div>
       )}
 
@@ -127,6 +176,16 @@ export function SidePanel() {
           <ToneSelector value={tone} onChange={setTone} />
           <GenerateButton loading={loading} onClick={handleGenerate} />
           {generated && <GeneratedComment comment={generated} onInsert={handleInsert} />}
+        </>
+      )}
+
+      {dmCtx && (
+        <>
+          <DMHeader recipient={dmCtx.recipient} />
+          <DMConversation recipient={dmCtx.recipient} conversation={dmCtx.conversation} />
+          <ToneSelector value={tone} onChange={setTone} />
+          <GenerateButton loading={loading} onClick={handleGenerateDM} label="Generate Message" />
+          {generated && <GeneratedComment comment={generated} onInsert={handleInsert} header="Generated Message" buttonLabel="Send Message" />}
         </>
       )}
     </div>
